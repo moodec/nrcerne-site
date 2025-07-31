@@ -1,4 +1,11 @@
-# Ownership in Rust
+---
+title: "Ownership in the Rust programming language"
+date: "2025-07-31"
+description: "Exploring the nuances of memory management in Rust and it's unique concept of ownership."
+tags: ["rust", "memory"]
+thumbnail: "/images/cuddlyferris.png"
+---
+
 ## Overview
 Arguably the most unique feature of the Rust programming language is it's concept of *ownership*. Rust utilizes ownership as a set of rules that governs how memory is managed. Each programming language has it's own strategy for managing memory. For instance, C requires that users explicitly allocate and deallocate memory for dynamically-created data. Other languages, like Golang, make use of garbage collectors to clean up memory that is no longer being used by the program.
 Ownership rules are enforced by Rust at compile-time; if Rust detects a violation of one of its ownership rules during compilation, it will produce a compilation error. In this blog post, I will explore some of the nuances of ownership so that I can better understand it.
