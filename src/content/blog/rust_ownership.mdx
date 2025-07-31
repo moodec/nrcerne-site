@@ -1,0 +1,175 @@
+# Ownership in Rust
+## Overview
+Arguably the most unique feature of the Rust programming language is it's concept of *ownership*. Rust utilizes ownership as a set of rules that governs how memory is managed. Each programming language has it's own strategy for managing memory. For instance, C requires that users explicitly allocate and deallocate memory for dynamically-created data. Other languages, like Golang, make use of garbage collectors to clean up memory that is no longer being used by the program.
+Ownership rules are enforced by Rust at compile-time; if Rust detects a violation of one of its ownership rules during compilation, it will produce a compilation error. In this blog post, I will explore some of the nuances of ownership so that I can better understand it.
+
+## The Stack & The Heap
+Before discussing ownership, it's important to have a fundamental understanding of how computer memory is managed. Specifically, with regards to the stack and the heap regions of memory. 
+To quickly recap, the stack is used to store data types with known, fixed values where the size of the data is known at compile-time. Data is accessed on the stack using the Last In First Out (LIFO) method. A common analogy is a stack of plates; the last plate stacked will be the first plate that is removed from the stack. As data is pushed onto the stack, the stack grows towards lower memory addresses. The last value that was *pushed* to the stack is the first value that is *popped* off of the stack when required by the program. Because the stack is structured contiguously, and memory allocation and deallocation only involves one CPU instruction, accessing stack memory is much faster than accessing data in heap memory. However, one limitation of the stack is that each value must be of a known, fixed size. Common examples of data that is stored on the stack are integers, characters, floats, pointers, etc.
+On the other hand, the heap is less organized. The heap is used to store data where the size is unknown at compile-time. In some languages like C, users must explicitly allocate memory to handle these data types. The memory allocator will then look for a region in memory that is large enough to handle the data, and then return a *pointer* which *points* to the address or location in memory which stores the data. This method of accessing data is much less efficient, because the program must follow the pointer to access the data in memory. Data that is dynamically created at runtime is often stored in the heap.
+
+## Ownership Rules
+According to the [Rust documentation](https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html), the rules of ownership are simple:
+1. Each value has an *owner*.
+1. There can only be one owner at a time.
+1. When the owner goes out of scope, the value will get dropped. 
+
+An owner's scope is simply just the range in which it is valid. The following code snippet includes some comments which explain scope better:
+```rust
+fn some_func() {
+    let s1 = String::from("Hello world!"); // s1 scope begins here
+
+    {
+        let s2 = String::from("Ahoy world!"); // s2 scope begins here
+        // do stuff with s2
+    } // s2 scope ends here
+    println!("String 1: {s1}");
+    // println!("String 2: {s2}"); This will fail because we are attempting to access s2 outside of it's scope range
+
+} // s1 scope ends here
+```
+Attempting to access the value `s2` outside of it's scope will yield the following error from the Rust compiler:
+```sh
+✗ cargo run
+   Compiling blog_post v0.1.0 ([REDACTED]/blog_post)
+error[E0425]: cannot find value `s2` in this scope
+  --> src/main.rs:14:26
+   |
+14 |     println!("String 2: {s2}");
+   |                          ^^ help: a local variable with a similar name exists: `s1`
+```
+As demonstrated, the compiler returned an error because the value was already dropped when we attempted to access it. 
+In the above example, it's important to make the distinction that we used the `String` type. The `String` type in Rust is to support dynamically-allocated strings that can further grow and be mutated. This `String` type is stored in the heap as opposed to the string literal type which is of a known, fixed size and is stored on the stack. This is an important distinction because their data type dictates how they're handled by Rust. For instance, consider the following example:
+```rust
+fn main() {
+    let x = 1; // the value of x (1) is pushed onto the stack
+    let y = x; // the value of y (the value of x) is pushed onto the stack. We now have two 1s pushed onto the stack
+
+    let s1 = String::from("Hi there."); // memory is allocated in the heap to store "Hi there." Pointer, length, and capacity are stored on the stack.
+    let s2 = s1; // Heap memory is not copied. Pointer, length, and capacity are copied on the stack.
+}
+```
+When creating a new value `y` and setting it to the value of `x`, this causes another value (`1`) to get pushed onto the stack. As a result, the two values are now stored onto the stack. However, this strategy does not occur for heap data because it would be inefficient. Instead, the `String` *data* is copied to `s2` which contains the pointer that points to the already existing heap data, the length of the heap data, and the capacity.
+One other important consideration is that `s1` and `s2` now both point to the same heap data, so what happens when one of them goes out of scope? This is known as a *double free error* or which is a condition where two pointers pointing to the same memory location results in the program attempting to free the same memory. 
+To prevent double free errors, Rust invalidates `s1` the moment `s2` is defined. Therefore, if we attempt to reference `s1` in our code following `s2`'s declaration, we will get an error. 
+```rust
+fn main() {
+    some_func();
+}
+
+fn some_func() {
+    let s1 = String::from("Hello world!");
+    let s2 = s1;
+
+    println!("{s1}") // fails because s1 has been invalidated by s2
+}
+```
+Attempting to compile will yield the following error:
+```sh
+✗ cargo run
+   Compiling blog_post v0.1.0 ([REDACTED]/rust/blog_post)
+error[E0382]: borrow of moved value: `s1`
+ --> src/main.rs:9:15
+  |
+6 |     let s1 = String::from("Hello world!");
+  |         -- move occurs because `s1` has type `String`, which does not implement the `Copy` trait
+7 |     let s2 = s1;
+  |              -- value moved here
+8 |
+9 |     println!("{s1}") // fails because s1 has been invalidated by s2
+  |               ^^^^ value borrowed here after move
+  |
+```
+In Rust, the declaration of `s2` set to the value of `s1` is known as a *move*. It is not considered a copy because `s1` is being invalidated. If we truly wanted to perform a deep copy of the heap data, we could use the `clone()` function.
+```rust
+fn main() {
+    let s1 = String::from("Hello world!");
+    let s2 = s1.clone(); // performs deep copy of s1. There are now two "Hello world!" strings in the heap.
+}
+```
+### Stack Data
+As aforementioned, stack data is handled differently than heap data by Rust. Consider the earlier example.
+```rust
+fn main() {
+    let x = 1;
+    let y = x; // y is copied from x as opposed to being moved, and both values are pushed to the stack
+}
+```
+Some stack values contain a special `Copy` trait which indiciates to Rust that they can be trivially copied as opposed to being moved. 
+### Functions
+Ownership rules applied to variables set to the value of other variables also apply similarly to values passed to functions. Consider the following example:
+```rust
+fn main() {
+    let s1 = String::from("Hello world!"); // s1 scope begins here
+
+    some_func(s1); // some_func takes ownership over s1 and the s1 scope ends in main
+    println!("{s1}"); // will fail because s1 scope has ended with some_func
+}
+
+fn some_func(s: String) {
+    println!("[-] some_func: {s}");
+}
+```
+After running the above code, we get the following error from the Rust compiler:
+```sh
+✗ cargo run
+   Compiling blog_post v0.1.0 ([REDACTED]/rust/blog_post)
+error[E0382]: borrow of moved value: `s1`
+ --> src/main.rs:5:15
+  |
+2 |     let s1 = String::from("Hello world!"); // s1 scope begins here
+  |         -- move occurs because `s1` has type `String`, which does not implement the `Copy` trait
+3 |
+4 |     some_func(s1); // some_func takes ownership over s1 and the s1 scope ends in main
+  |               -- value moved here
+5 |     println!("{s1}"); // will fail because s1 scope has ended with some_func
+  |               ^^^^ value borrowed here after move
+  |
+note: consider changing this parameter type in function `some_func` to borrow instead if owning the value isn't necessary
+```
+As demonstrated, the `some_func` function assumed ownership over `s1`, terminating it's scope in the `main` function. Theoretically, we could return `s1` back to main if we wanted to continue to use it, but this method would be tedious to implement. Especially when dealing with larger codebases. 
+Instead, Rust allows you to define *references* which enables functions to *borrow data* as opposed to assuming ownership over it. A reference is a pointer that a program can use to borrow data.
+For example, we can rework the above code to borrow the data instead:
+```rust
+fn main() {
+    let s1 = String::from("Hello world!"); // s1 scope begins here
+
+    some_func(&s1); // some_func is now borrowing s1 through a reference instead of assuming ownership
+    println!("{s1}"); // this now works because the s1 scope has not ended due to borrowing
+}
+
+fn some_func(s: &String) {
+    println!("[-] some_func: {s}");
+}
+```
+After running the above code, we get successful code output:
+```sh
+✗ cargo run
+   Compiling blog_post v0.1.0 ([REDACTED]/rust/blog_post)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.63s
+     Running `target/debug/blog_post`
+[-] some_func: Hello world!
+Hello world!
+```
+By default, references are immutable, meaning we cannot use them to mutate the data that they point to. However, references can also be mutable when explicitly defined. This is incredibly useful if we want to mutate the data that a reference points to without assuming ownership. We can rework the example again to mutate our string:
+```rust
+fn main() {
+    let mut s1 = String::from("Hello world!"); // s1 scope begins here
+
+    some_func(&mut s1); // some_func is now borrowing mutable s1 instead of assuming ownership
+    println!("{s1}"); // s1 has been mutated by some_func
+}
+
+fn some_func(s: &mut String) {
+    s.push_str(" My name is Nick!");
+}
+```
+After running the program, we get the following output indicated that `some_func` has successfully mutated the data using a mutable reference:
+```sh
+ cargo run
+   Compiling blog_post v0.1.0 ([REDACTED]/Documents/rust/blog_post)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.73s
+     Running `target/debug/blog_post`
+Hello world! My name is Nick!
+```
+In conclusion, ownership is really cool feature of Rust that helps developers avoid common pitfalls (and vulnerabilities) when it comes to memory management. It could take some getting used to when coming from other programming languages, but ownership rules are relatively simple conceptually and adapting should not be that difficult.
