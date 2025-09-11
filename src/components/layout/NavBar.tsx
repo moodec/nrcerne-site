@@ -61,7 +61,7 @@ export default function NavBar() {
             >
                 {isDark ? <IconSun size={25} /> : <IconMoon size={25} />}
             </ActionIcon>
-            <Link href="https://github.com/ncerne00"
+            <Link href="https://github.com/moodec"
             style={{
                 textDecoration: 'none',
                 color: 'inherit'

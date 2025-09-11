@@ -30,7 +30,7 @@ A modern, performant personal blog website built with Next.js, React, and TypeSc
 
 ```bash
 # Clone the repository
-git clone https://github.com/ncerne00/nrcerne-site
+git clone https://github.com/moodec/nrcerne-site
 cd personal-blog
 
 # Install dependencies

@@ -84,7 +84,7 @@ export default function Whoami() {
         </Title>
         <Box>
           <GitHubCalendar 
-            username="ncerne00"
+            username="moodec"
             colorScheme="dark"
             fontSize={12}
             blockSize={12}
