@@ -28,13 +28,16 @@ import Badges from "@/components/content/Badges";
 
 export default function Whoami() {
   const terminalContent = `➜ cat about.txt
- Hello! I'm a hacker passionate about web apps, embedded devices, and red teaming! 😊
- I also commonly work with programming languages like TypeScript, Python, Java, and Rust.
- ➜ ls past_projects
+ Hello! I'm passionate about web application and embedded device security, and red teaming. 
+ I commonly work with programming languages like TypeScript, Python, Java, and Rust.
+Some of my past projects include:
  - Project 1: Reverse Engineering and hacking a Smart Grill
  - Project 2: RustyMalware - A malware development library in Rust
- ➜ cat learn_more.txt
- If you'd like to read more on my current projects, visit my GitHub (linked above) or read my blog!`;
+ - Project 3: YoLink Device Hub Vulnerability Research - this produced:
+        - [CRITICAL] - Insufficient Authorization Controls - CVE-2025-59449
+        - [CRITICAL] - Predictable Device Credentials - CVE-2025-59452
+        - [HIGH] - Insecure Network Transmission - CVE-2025-59448
+        - [MEDIUM] - Improper Session Management - CVE-2025-59451`;
 
   return (
     <Container size="xl" py="xl">

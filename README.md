@@ -70,7 +70,3 @@ function Greeting() {
   return <h1>Hello, world!</h1>;
 }
 ```
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
